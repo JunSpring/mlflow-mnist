@@ -73,7 +73,8 @@ def main():
     args = parse_args()
     
     mlflow.set_tracking_uri(args.tracking_uri)
-    mlflow.set_experiment("MLflow MNIST Test")
+    if mlflow.active_run() is None:
+        mlflow.set_experiment("MLflow MNIST Test")
     mlflow.enable_system_metrics_logging()
 
     data_path = '/home/junspring/mlflow-mnist/data'
