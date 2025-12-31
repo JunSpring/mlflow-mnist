@@ -1,13 +1,16 @@
 channels:
+- pytorch  # 추가
 - conda-forge
 dependencies:
 - python=3.10.19
-- pip<=25.3
+- pip
+- pytorch  # 추가
+- torchvision # 추가 (MNIST 실습에 필요)
 - pip:
-  - mlflow==3.8.1
-  - cloudpickle==3.1.2
-  - numpy==2.2.6
-  - pandas==2.3.3
-  - torch==2.9.1
-  - tqdm==4.67.1
-name: mlflow-mnist-env
+  - mlflow==3.8.1  # 서버 버전과 맞추는 것이 좋습니다
+  - cloudpickle
+  - numpy
+  - pandas
+  - torch  # 버전 고정을 풀거나 최신 안정 버전으로 설정
+  - tqdm
+  name: mlflow-mnist-env
