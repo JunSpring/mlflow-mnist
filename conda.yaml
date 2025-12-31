@@ -1,16 +1,19 @@
+# conda.yaml
 channels:
-- pytorch  # 추가
-- conda-forge
+  - pytorch
+  - nvidia
+  - conda-forge
 dependencies:
-- python=3.10.19
-- pip
-- pytorch  # 추가
-- torchvision # 추가 (MNIST 실습에 필요)
-- pip:
-  - mlflow==3.8.1  # 서버 버전과 맞추는 것이 좋습니다
-  - cloudpickle
-  - numpy
-  - pandas
-  - torch  # 버전 고정을 풀거나 최신 안정 버전으로 설정
-  - tqdm
+  - python=3.10
+  - pip
+  - pytorch::pytorch==2.5.1  # pytorch 채널에서 명시적으로 가져옴
+  - pytorch::torchvision==0.20.1 # torch 2.5.1과 호환되는 버전
+  - pytorch::pytorch-cuda=12.1 # GPU 가속을 위해 필수 (서버 환경)
+  - pip:
+      - mlflow==3.8.1
+      - gitpython
+      - numpy
+      - pandas
+      - tqdm
+      - cloudpickle
 name: mlflow-mnist-env
