@@ -10,4 +10,4 @@ entry_points:
       epochs: {type: int, default: 3}
       train_size: {type: int, default: 10000}
       tracking_uri: {type: string, default: "sqlite:///mlflow.db"}
-    command: "python train.py --lr {lr} --batch_size {batch_size} --epochs {epochs} --train_size {train_size} --tracking_uri {tracking_uri}"
+    command: "python src/train.py --lr {lr} --batch_size {batch_size} --epochs {epochs} --train_size {train_size} --tracking_uri {tracking_uri}"
