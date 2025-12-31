@@ -1,0 +1,13 @@
+name: MLFLOW MNIST TEST
+
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      lr: {type: float, default: 0.001}
+      batch_size: {type: int, default: 64}
+      epochs: {type: int, default: 3}
+      train_size: {type: int, default: 10000}
+      tracking_uri: {type: string, default: "sqlite:///mlflow.db"}
+    command: "python train.py --lr {lr} --batch_size {batch_size} --epochs {epochs} --train_size {train_size} --tracking_uri {tracking_uri}"
