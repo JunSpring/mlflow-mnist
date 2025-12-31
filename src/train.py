@@ -90,11 +90,19 @@ def main():
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
+    train_ds = mlflow.data.from_numpy(
+        features=full_train_dataset.data[:args.train_size].numpy(),
+        targets=full_train_dataset.targets[:args.train_size].numpy(),
+        name="mnist_train_subset",
+        source=data_path
+    )
+
     myNeuralNet = NeuralNet()
     myOptimizer = torch.optim.Adam(myNeuralNet.parameters(), lr=args.lr)
 
     # MLflow 실행 시작
     with mlflow.start_run() as run:
+        mlflow.log_input(train_ds, context="training")
         # 모든 매개변수 자동 기록
         mlflow.log_params(vars(args))
         
