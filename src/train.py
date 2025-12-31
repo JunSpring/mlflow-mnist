@@ -76,7 +76,7 @@ def main():
     mlflow.set_experiment("MLflow MNIST Test")
     mlflow.enable_system_metrics_logging()
 
-    data_path = '../data'
+    data_path = '/home/junspring/mlflow-mnist/data'
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize((0.1307,), (0.3081,))
