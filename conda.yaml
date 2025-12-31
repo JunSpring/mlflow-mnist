@@ -13,4 +13,4 @@ dependencies:
   - pandas
   - torch  # 버전 고정을 풀거나 최신 안정 버전으로 설정
   - tqdm
-  name: mlflow-mnist-env
+name: mlflow-mnist-env
