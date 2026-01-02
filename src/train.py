@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
     parser.add_argument("--epochs", type=int, default=3, help="Number of epochs")
     parser.add_argument("--train_size", type=int, default=10000, help="Subset of training data")
-    parser.add_argument("--tracking_uri", type=str, default="sqlite:///mlflow.db", help="MLflow tracking URI")
+    parser.add_argument("--tracking_uri", type=str, default=None)
     return parser.parse_args()
 
 class NeuralNet(nn.Module):
@@ -72,7 +72,12 @@ def train(model, train_loader, optimizer, epoch, log_interval):
 def main():
     args = parse_args()
     
-    mlflow.set_tracking_uri(args.tracking_uri)
+    tracking_uri = args.tracking_uri or mlflow.get_tracking_uri()
+    mlflow.set_tracking_uri(tracking_uri)
+    
+    # 현재 설정된 URI가 무엇인지 터미널에 출력 (디버깅용)
+    print(f"현재 사용 중인 Tracking URI: {mlflow.get_tracking_uri()}")
+    
     if mlflow.active_run() is None:
         mlflow.set_experiment("MLflow MNIST Test")
     mlflow.enable_system_metrics_logging()
