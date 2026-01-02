@@ -11,7 +11,9 @@ dependencies:
   - pytorch::pytorch-cuda=12.1 # GPU 가속을 위해 필수 (서버 환경)
   - pip:
       - mlflow==3.8.1
+      - dvc
       - psutil
+      - nvidia-ml-py
       - gitpython
       - numpy
       - pandas

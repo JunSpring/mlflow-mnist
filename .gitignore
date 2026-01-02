@@ -1,0 +1,7 @@
+/data
+.vscode/
+mlartifacts
+mlflow.db
+__pycache__/
+*.pyc
+mlruns/

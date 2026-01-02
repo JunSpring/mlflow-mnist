@@ -8,6 +8,11 @@ import mlflow
 import mlflow.pytorch
 from mlflow.models import infer_signature
 from torch.utils.data import Subset
+import os
+import dvc.api
+import yaml
+import subprocess
+import sys
 
 def parse_args():
     parser = argparse.ArgumentParser(description="PyTorch MNIST with MLflow")
@@ -17,6 +22,51 @@ def parse_args():
     parser.add_argument("--train_size", type=int, default=10000, help="Subset of training data")
     parser.add_argument("--tracking_uri", type=str, default=None)
     return parser.parse_args()
+
+def verify_environment_clean():
+    """Git과 DVC가 클린한 상태인지 검사합니다."""
+    print("🔍 환경 상태 검사 중...")
+
+    # 1. Git 상태 체크 (수정된 코드나 커밋되지 않은 data.dvc 확인)
+    try:
+        git_status = subprocess.check_output(["git", "status", "--porcelain"]).decode("utf-8").strip()
+        if git_status:
+            print("\n❌ [ERROR] Git 상태가 Dirty합니다! 변경사항을 커밋하세요.")
+            print(f"--- 수정된 파일 목록 ---\n{git_status}\n")
+            return False
+    except Exception as e:
+        print(f"⚠️ Git 상태를 확인할 수 없습니다: {e}")
+        return False
+
+    # 2. DVC 상태 체크 (실제 데이터 실물이 .dvc 파일의 해시와 일치하는지 확인)
+    try:
+        # dvc status가 아무것도 출력하지 않으면 클린한 상태입니다.
+        dvc_status = subprocess.check_output(["dvc", "status", "--quiet"])
+        # dvc status는 변경사항이 있으면 에러 코드(non-zero)를 반환하거나 메시지를 출력합니다.
+    except subprocess.CalledProcessError:
+        print("\n❌ [ERROR] DVC 데이터 상태가 Dirty합니다! 'dvc commit' 또는 'dvc add'를 수행하세요.")
+        return False
+    except Exception as e:
+        print(f"⚠️ DVC 상태를 확인할 수 없습니다: {e}")
+        return False
+
+    print("✅ 환경이 깨끗합니다. 학습을 시작합니다.")
+    return True
+
+def get_dvc_hash(dvc_file_path='data.dvc'):
+    """로컬의 .dvc 파일을 직접 읽어 MD5 해시값을 추출합니다."""
+    # mlflow run 실행 시 파일 경로를 찾기 위해 절대 경로로 변환
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    full_path = os.path.join(project_root, dvc_file_path)
+    
+    try:
+        with open(full_path, 'r') as f:
+            dvc_data = yaml.safe_load(f)
+            # .dvc 파일의 outs 리스트에서 md5 값을 가져옴
+            return dvc_data['outs'][0]['md5']
+    except Exception as e:
+        print(f"DVC 메타데이터 읽기 실패: {e}")
+        return "unknown"
 
 class NeuralNet(nn.Module):
     def __init__(self):
@@ -70,6 +120,10 @@ def train(model, train_loader, optimizer, epoch, log_interval):
     mlflow.log_metric("avg_train_loss", avg_loss, step=epoch)
 
 def main():
+    if not verify_environment_clean():
+        print("🛑 재현성을 위해 더티 상태에서는 실행할 수 없습니다. 프로그램을 종료합니다.")
+        sys.exit(1) # 에러 코드를 남기고 강제 종료
+        
     args = parse_args()
     
     tracking_uri = args.tracking_uri or mlflow.get_tracking_uri()
@@ -77,12 +131,15 @@ def main():
     
     # 현재 설정된 URI가 무엇인지 터미널에 출력 (디버깅용)
     print(f"현재 사용 중인 Tracking URI: {mlflow.get_tracking_uri()}")
-    
+
     if mlflow.active_run() is None:
         mlflow.set_experiment("MLflow MNIST Test")
     mlflow.enable_system_metrics_logging()
 
+    dataset_version = get_dvc_hash()
+
     data_path = '/home/junspring/mlflow-mnist/data'
+    data_path_uri = f"file://{os.path.abspath(data_path)}"
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize((0.1307,), (0.3081,))
@@ -96,11 +153,12 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
     train_ds = mlflow.data.from_numpy(
-        features=full_train_dataset.data[:args.train_size].numpy(),
-        targets=full_train_dataset.targets[:args.train_size].numpy(),
-        name="mnist_train_subset",
-        source=data_path
-    )
+            features=full_train_dataset.data[:args.train_size].numpy(),
+            targets=full_train_dataset.targets[:args.train_size].numpy(),
+            name="mnist_train_subset",
+            source=f"file://{os.path.abspath(data_path)}",
+            digest=dataset_version  # MLflow 데이터셋 다이제스트로 사용
+        )
 
     myNeuralNet = NeuralNet()
     myOptimizer = torch.optim.Adam(myNeuralNet.parameters(), lr=args.lr)
@@ -110,6 +168,7 @@ def main():
         mlflow.log_input(train_ds, context="training")
         # 모든 매개변수 자동 기록
         mlflow.log_params(vars(args))
+        mlflow.set_tag("dvc.dataset_version", dataset_version)
         
         for epoch in range(args.epochs):
             train(myNeuralNet, train_loader, myOptimizer, epoch, log_interval=40)
@@ -121,7 +180,7 @@ def main():
         # 모델 저장 (MLflow 가이드 방식)
         mlflow.pytorch.log_model(
             pytorch_model=myNeuralNet,
-            artifact_path="model",
+            name="model",
             signature=signature,
             input_example=input_example
         )
