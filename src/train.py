@@ -114,10 +114,10 @@ def train(model, train_loader, optimizer, epoch, log_interval):
         if batch_idx % log_interval == 0:
             # 배치별 Loss 기록
             step = epoch * len(train_loader) + batch_idx
-            # mlflow.log_metric("batch_loss", loss.item(), step=step)
+            mlflow.log_metric("batch_loss", loss.item(), step=step)
 
     avg_loss = total_loss / len(train_loader)
-    # mlflow.log_metric("avg_train_loss", avg_loss, step=epoch)
+    mlflow.log_metric("avg_train_loss", avg_loss, step=epoch)
 
 def setup_mlflow(tracking_uri, experiment_name, run_name=None):
     mlflow.set_tracking_uri(tracking_uri)
@@ -129,6 +129,7 @@ def setup_mlflow(tracking_uri, experiment_name, run_name=None):
         print("MLflow: CLI에서 설정된 실험 환경을 사용합니다.")
     
     mlflow.enable_system_metrics_logging()
+    mlflow.autolog()
     mlflow.pytorch.autolog()
 
     try:
