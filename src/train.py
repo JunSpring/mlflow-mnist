@@ -122,7 +122,11 @@ def train(model, train_loader, optimizer, epoch, log_interval):
 def setup_mlflow(tracking_uri, experiment_name, run_name=None):
     mlflow.set_tracking_uri(tracking_uri)
     
-    mlflow.set_experiment(experiment_name)
+    if "MLFLOW_RUN_ID" not in os.environ:
+        mlflow.set_experiment(experiment_name)
+        print(f"MLflow: 실험 '{experiment_name}'을 설정했습니다.")
+    else:
+        print("MLflow: CLI에서 설정된 실험 환경을 사용합니다.")
     
     mlflow.enable_system_metrics_logging()
     mlflow.autolog()
