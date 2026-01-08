@@ -119,22 +119,30 @@ def train(model, train_loader, optimizer, epoch, log_interval):
     avg_loss = total_loss / len(train_loader)
     mlflow.log_metric("avg_train_loss", avg_loss, step=epoch)
 
+def setup_mlflow(tracking_uri, experiment_name, run_name=None):
+    mlflow.set_tracking_uri(tracking_uri)
+    
+    mlflow.set_experiment(experiment_name)
+    
+    mlflow.enable_system_metrics_logging()
+    mlflow.autolog()
+
+    try:
+        active_run = mlflow.active_run() or mlflow.start_run(run_name=run_name)
+        
+        print(f"MLflow: logging run_id({active_run.info.run_id}) to {tracking_uri}")
+        return active_run
+        
+    except Exception as e:
+        print(f"MLflow: Failed to initialize: {e}")
+        return None
+
 def main():
     if not verify_environment_clean():
         print("🛑 재현성을 위해 더티 상태에서는 실행할 수 없습니다. 프로그램을 종료합니다.")
         sys.exit(1) # 에러 코드를 남기고 강제 종료
         
     args = parse_args()
-    
-    tracking_uri = args.tracking_uri or mlflow.get_tracking_uri()
-    mlflow.set_tracking_uri(tracking_uri)
-    
-    # 현재 설정된 URI가 무엇인지 터미널에 출력 (디버깅용)
-    print(f"현재 사용 중인 Tracking URI: {mlflow.get_tracking_uri()}")
-
-    if mlflow.active_run() is None:
-        mlflow.set_experiment("MLflow MNIST Test")
-    mlflow.enable_system_metrics_logging()
 
     dataset_version = get_dvc_hash()
 
@@ -163,28 +171,31 @@ def main():
     myNeuralNet = NeuralNet()
     myOptimizer = torch.optim.Adam(myNeuralNet.parameters(), lr=args.lr)
 
-    # MLflow 실행 시작
-    with mlflow.start_run() as run:
-        mlflow.log_input(train_ds, context="training")
-        # 모든 매개변수 자동 기록
-        mlflow.log_params(vars(args))
-        mlflow.set_tag("dvc.dataset_version", dataset_version)
-        
-        for epoch in range(args.epochs):
-            train(myNeuralNet, train_loader, myOptimizer, epoch, log_interval=40)
+    tracking_uri = args.tracking_uri or mlflow.get_tracking_uri()
+    run = setup_mlflow(tracking_uri, "MLflow MNIST Test")
 
-        # 모델 Signature 및 샘플 데이터 설정
-        input_example = next(iter(train_loader))[0][:1].numpy()
-        signature = infer_signature(input_example, myNeuralNet(torch.tensor(input_example)).detach().numpy())
+    if run:
+        with run:
+            mlflow.log_input(train_ds, context="training")
+            # 모든 매개변수 자동 기록
+            mlflow.log_params(vars(args))
+            mlflow.set_tag("dvc.dataset_version", dataset_version)
+            
+            for epoch in range(args.epochs):
+                train(myNeuralNet, train_loader, myOptimizer, epoch, log_interval=40)
 
-        # 모델 저장 (MLflow 가이드 방식)
-        mlflow.pytorch.log_model(
-            pytorch_model=myNeuralNet,
-            name="model",
-            signature=signature,
-            input_example=input_example
-        )
-        print(f"Run ID: {run.info.run_id} 완료!")
+            # 모델 Signature 및 샘플 데이터 설정
+            input_example = next(iter(train_loader))[0][:1].numpy()
+            signature = infer_signature(input_example, myNeuralNet(torch.tensor(input_example)).detach().numpy())
+
+            # 모델 저장 (MLflow 가이드 방식)
+            mlflow.pytorch.log_model(
+                pytorch_model=myNeuralNet,
+                name="model",
+                signature=signature,
+                input_example=input_example
+            )
+            print(f"Run ID: {run.info.run_id} 완료!")
 
 if __name__ == "__main__":
     main()
