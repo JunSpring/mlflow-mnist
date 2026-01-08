@@ -129,7 +129,7 @@ def setup_mlflow(tracking_uri, experiment_name, run_name=None):
         print("MLflow: CLI에서 설정된 실험 환경을 사용합니다.")
     
     mlflow.enable_system_metrics_logging()
-    mlflow.autolog()
+    mlflow.pytorch.autolog()
 
     try:
         active_run = mlflow.active_run() or mlflow.start_run(run_name=run_name)
